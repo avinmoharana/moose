@@ -91,7 +91,8 @@ ADReal INSFVSAViscositySourceSink::getSymmetricStrainTensorNorm()
     const auto & grad_v = _v_var->adGradSln(_current_elem);
     deformation +=
         2.0*Utility::pow<2>(grad_v(1)) + Utility::pow<2>(grad_v(0) + grad_u(1));
-    vorticity += 2.0 * Utility::pow<2>(grad_v(0) - grad_u(1));
+    //vorticity += 2.0 * Utility::pow<2>(grad_v(0) - grad_u(1));
+    vorticity += 2.0 *std::pow(grad_u(1) - grad_v(0),2);
 
     if (_dim >= 3)
     {
@@ -103,23 +104,27 @@ ADReal INSFVSAViscositySourceSink::getSymmetricStrainTensorNorm()
     }
   }
 
-  return(std::sqrt(vorticity+offset) 
-         + 2.0 * std::min(0.,std::sqrt(deformation+offset)-std::sqrt(vorticity+offset)));
+  //return(std::sqrt(vorticity+offset) 
+  //       + 2.0 * std::min(0.,std::sqrt(deformation+offset)-std::sqrt(vorticity+offset)));
+
+  return(std::sqrt(vorticity+offset)); 
+  //return (std::sqrt(deformation + offset));
 
 }
 
 ADReal INSFVSAViscositySourceSink::production()
 {
-  constexpr Real protection_nu_bar = 0.001;
+  constexpr Real protection_nu_bar = 0.00001;
   
   auto omega = getSymmetricStrainTensorNorm();
   auto xi = _var(makeElemArg(_current_elem))
 	  / (_mu(makeElemArg(_current_elem)) / _rho(makeElemArg(_current_elem)));
-  auto fv1 = Utility::pow<3>(xi) 
-	  / ( Utility::pow<3>(xi) + Utility::pow<3>(_C_v1(makeElemArg(_current_elem))) );
+  auto xi_cube = std::pow(xi,3);
+  auto cv1_cube = std::pow(_C_v1(makeElemArg(_current_elem)),3);
+  auto fv1 = xi_cube/(xi_cube+cv1_cube);
   auto fv2 = 1. - xi/(1. + xi * fv1);
-  auto kd_sq = Utility::pow<2>(_kappa(makeElemArg(_current_elem))
-              *_d(makeElemArg(_current_elem)));
+  auto kd_sq =std::pow( _kappa(makeElemArg(_current_elem))*_d(makeElemArg(_current_elem)), 2);
+
   auto S_tilda = omega + _var(makeElemArg(_current_elem)) *fv2 / kd_sq;
   S_tilda = std::max(S_tilda, 0.3*omega);
   auto prod = (_C_b1(makeElemArg(_current_elem)) 
@@ -132,27 +137,29 @@ ADReal INSFVSAViscositySourceSink::production()
 
 ADReal INSFVSAViscositySourceSink::destruction()
 {
-  constexpr Real protection_nu_bar = 0.001;
+  constexpr Real protection_nu_bar = 0.00001;
 
   auto omega = getSymmetricStrainTensorNorm();
 
-  auto kd_sq = Utility::pow<2>(_kappa(makeElemArg(_current_elem))
-                               *_d(makeElemArg(_current_elem)));
   auto xi = _var(makeElemArg(_current_elem))
-	  / ( _mu(makeElemArg(_current_elem)) / _rho(makeElemArg(_current_elem)) );
-  auto fv1 = Utility::pow<3>(xi) 
-	  / ( Utility::pow<3>(xi) + Utility::pow<3>(_C_v1(makeElemArg(_current_elem))) );
+	  / (_mu(makeElemArg(_current_elem)) / _rho(makeElemArg(_current_elem)));
+  auto xi_cube = std::pow(xi,3);
+  auto cv1_cube = std::pow(_C_v1(makeElemArg(_current_elem)),3);
+  auto fv1 = xi_cube/(xi_cube+cv1_cube);
   auto fv2 = 1. - xi/(1. + xi * fv1);
+  auto kd_sq =std::pow( _kappa(makeElemArg(_current_elem))*_d(makeElemArg(_current_elem)), 2);
+  
   auto S_tilda = omega + _var(makeElemArg(_current_elem)) *fv2 / kd_sq;
   S_tilda = std::max(S_tilda, 0.3*omega);   // OpenFOAM implementation, ensures minimum positive value
   auto r =  _var(makeElemArg(_current_elem)) / S_tilda / kd_sq;
-  r = (r < 10.0) ? r : 10.0;  // OpenFOAM implementation, literature says r < 1
-  auto g = r + _C_w2(makeElemArg(_current_elem)) * (Utility::pow<6>(r) - r);
-  auto cw3_6 = Utility::pow<6>(_C_w3(makeElemArg(_current_elem)));
-  auto fw = g * std::pow( ( 1.0 + cw3_6) / (Utility::pow<6>(g)+cw3_6),1.0/6.0);
-  auto Cw1 = _C_b1(makeElemArg(_current_elem)) / Utility::pow<2>(_kappa(makeElemArg(_current_elem)))
+  r = (r < 5.0) ? r : 5.0;  // OpenFOAM implementation, literature says r < 1
+  auto g = r + _C_w2(makeElemArg(_current_elem)) * (std::pow(r,6) - r);
+  auto cw3_6 = std::pow(_C_w3(makeElemArg(_current_elem)),6);
+  auto fw = g * std::pow( ( 1.0 + cw3_6) / (std::pow(g,6)+cw3_6),1.0/6.0);
+  auto Cw1 = _C_b1(makeElemArg(_current_elem)) / std::pow(_kappa(makeElemArg(_current_elem)),2)
              + ( 1.0 + _C_b2(makeElemArg(_current_elem)) ) / _sigma_nu(makeElemArg(_current_elem));
-  auto nubar_by_d_sq = Utility::pow<2>( _var(makeElemArg(_current_elem))/_d(makeElemArg(_current_elem)) );	     
+  auto nubar_by_d_sq =std::pow( _var(makeElemArg(_current_elem))/_d(makeElemArg(_current_elem)),2);
+
   ADReal destruct = Cw1 * fw * nubar_by_d_sq + protection_nu_bar;
   
   destruct = (destruct > 0.) ? destruct : 0.0;
@@ -164,7 +171,7 @@ ADReal INSFVSAViscositySourceSink::gradSquareTerm()
   auto dVar = _var.gradient(makeElemArg(_current_elem));
   return ( _C_b2(makeElemArg(_current_elem))
 	 / _sigma_nu(makeElemArg(_current_elem))
-	 * (  std::pow(dVar(0),2) + std::pow(dVar(1),2) + std::pow(dVar(2),2)));
+	 * (  std::pow(dVar(0),2) + std::pow(dVar(1),2) ));
 }
 
 ADReal
@@ -176,11 +183,19 @@ INSFVSAViscositySourceSink::computeQpResidual()
 
   ADReal prod = production();
   ADReal destruct = destruction();
-  ADReal gst = gradSquareTerm(); 
-  
-  residual += -prod + destruct - gst;
+  ADReal gst = gradSquareTerm();
+
+  ADReal positiveTerms = prod + gst;
+
+  //positiveTerms = (positiveTerms/destruct < 100) ? positiveTerms : 100*destruct;
+  residual += positiveTerms - destruct;
+  //residual += prod - destruct + gst;
+
+  //residual = (residual > 100) ? residual : 100;
+  //residual = (residual < 0.01) ? residual : 0.01;
 
   return residual;
+  //return 0.;
 
   #else
     return 0;
