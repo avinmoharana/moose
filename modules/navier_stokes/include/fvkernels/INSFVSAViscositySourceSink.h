@@ -7,6 +7,11 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
+/*
+ * SA source term implementation follows this reference
+ * https://turbmodels.larc.nasa.gov/spalart.html
+*/
+
 #pragma once
 
 #include "FVElementalKernel.h"
@@ -25,7 +30,7 @@ protected:
   ADReal computeQpResidual() override;
 
 protected:
-  virtual ADReal getSymmetricStrainTensorNorm();
+  virtual ADReal getSAStrainTensorNorm();
   virtual ADReal production();
   virtual ADReal destruction();
   virtual ADReal gradSquareTerm();
