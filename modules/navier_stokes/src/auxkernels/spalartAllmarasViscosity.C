@@ -45,8 +45,6 @@ spalartAllmarasViscosity::computeValue()
   Real fv1 = Utility::pow<3>(xi) /
              (Utility::pow<3>(xi) + Utility::pow<3>(cv1));
   Real mut = 0.;
-  //if (_nu(makeElemArg(_current_elem)).value() < 0.) mut = 0.;
-  //else mut = ( _rho(makeElemArg(_current_elem)) *_nu(makeElemArg(_current_elem))).value() * fv1 ;
   mut = ( _rho(makeElemArg(_current_elem)) *_nu(makeElemArg(_current_elem))).value() * fv1 ;
   return (mut);
 }
