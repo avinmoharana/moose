@@ -39,12 +39,14 @@ spalartAllmarasViscosity::spalartAllmarasViscosity(const InputParameters & param
 Real
 spalartAllmarasViscosity::computeValue()
 {
-  auto cv1 = _C_v1(makeElemArg(_current_elem));
-  auto xi = _nu(makeElemArg(_current_elem))
-             /(_mu(makeElemArg(_current_elem))/_rho(makeElemArg(_current_elem)));
-  auto fv1 = Utility::pow<3>(xi) /
+  Real cv1 = _C_v1(makeElemArg(_current_elem)).value();
+  Real xi = _nu(makeElemArg(_current_elem)).value()
+             /(_mu(makeElemArg(_current_elem))/_rho(makeElemArg(_current_elem))).value();
+  Real fv1 = Utility::pow<3>(xi) /
              (Utility::pow<3>(xi) + Utility::pow<3>(cv1));
-  return ( _rho(makeElemArg(_current_elem))
-	  *_nu(makeElemArg(_current_elem))
-	  * fv1 ).value();
+  Real mut = 0.;
+  //if (_nu(makeElemArg(_current_elem)).value() < 0.) mut = 0.;
+  //else mut = ( _rho(makeElemArg(_current_elem)) *_nu(makeElemArg(_current_elem))).value() * fv1 ;
+  mut = ( _rho(makeElemArg(_current_elem)) *_nu(makeElemArg(_current_elem))).value() * fv1 ;
+  return (mut);
 }
