@@ -9,8 +9,8 @@
 
 #include "spalartAllmarasViscosity.h"
 #include "MooseMesh.h"
-#include "INSFVMethods.h"
-
+//#include "INSFVMethods.h"
+#include "NavierStokesMethods.h"
 registerMooseObject("NavierStokesApp", spalartAllmarasViscosity);
 
 InputParameters
@@ -20,7 +20,7 @@ spalartAllmarasViscosity::validParams()
 
   params.addClassDescription("Computes the turbulent viscosity according to Spalart-Allmaras model.");
   params.addRequiredParam<MooseFunctorName>("nu", "Splart-Allmaras viscosity");
-  params.addRequiredParam<MooseFunctorName>("rho", "fluid density");
+  params.addRequiredParam<MooseFunctorName>(NS::density, "fluid density");
   params.addRequiredParam<MooseFunctorName>("mu", "fluid dynamic viscosity");
   params.addRequiredParam<MooseFunctorName>("C_v1", "Closure constant");
 
@@ -30,7 +30,7 @@ spalartAllmarasViscosity::validParams()
 spalartAllmarasViscosity::spalartAllmarasViscosity(const InputParameters & params)
   : AuxKernel(params),
     _nu(getFunctor<ADReal>("nu")),
-    _rho(getFunctor<ADReal>("rho")),
+    _rho(getFunctor<ADReal>(NS::density)),
     _mu(getFunctor<ADReal>("mu")),
     _C_v1(getFunctor<ADReal>("C_v1"))
 {
