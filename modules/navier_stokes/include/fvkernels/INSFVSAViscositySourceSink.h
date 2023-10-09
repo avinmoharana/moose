@@ -30,7 +30,8 @@ protected:
   ADReal computeQpResidual() override;
 
 protected:
-  virtual ADReal getSAStrainTensorNorm();
+  virtual ADReal getSAStrainTensorNormDeformation();
+  virtual ADReal getSAStrainTensorNormVorticity();
   virtual ADReal production();
   virtual ADReal destruction();
   virtual ADReal gradSquareTerm();

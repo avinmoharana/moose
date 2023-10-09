@@ -52,13 +52,14 @@ INSFVSAViscosityDiffusion::computeQpResidual()
   const auto face_elem = elemFromFace();
   const auto face_neighbor = neighborFromFace();
 
+  
   Moose::FV::interpolate(Moose::FV::InterpMethod::Average,
 		  	diffusion_face,
 		  	_mu_t(face_elem)/(_rho(face_elem)*_sigma_nu(face_elem)),
 		  	_mu_t(face_neighbor)/(_rho(face_neighbor)*_sigma_nu(face_neighbor)),
 		  	*_face_info,
 		  	true);
-
+  
   // Compute nu gradient dotted with the surface normal
   auto dVardn = gradUDotNormal();
 
