@@ -31,17 +31,17 @@ INSFVSAViscosityAdvection::computeQpResidual()
 {
   ADReal adv_quant_interface;
 
-  const auto elem_face = elemFromFace();
-  const auto neighbor_face = neighborFromFace();
+  const auto elem_face = elemArg();
+  const auto neighbor_face = neighborArg();
 
   // Velocity interpolation
-  const auto v = _rc_vel_provider.getVelocity(_velocity_interp_method, *_face_info, _tid);
+  const auto v = _rc_vel_provider.getVelocity(_velocity_interp_method, *_face_info,determineState(), _tid);
 
   // Interpolation of advected quantity
   Moose::FV::interpolate(_advected_interp_method,
 		         adv_quant_interface,
-			 _var(elem_face),
-			 _var(neighbor_face),
+			 _var(elem_face, determineState()),
+			 _var(neighbor_face, determineState()),
 			 v,
 			 *_face_info,
 			 true);

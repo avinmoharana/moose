@@ -49,19 +49,23 @@ INSFVSAViscosityDiffusion::computeQpResidual()
 {
   // Interpolate effective diffusity on the face
   ADReal diffusion_face;
-  const auto face_elem = elemFromFace();
-  const auto face_neighbor = neighborFromFace();
+  const auto face_elem = elemArg();
+  const auto face_neighbor = neighborArg();
 
+  const auto mut_fe = _mu_t(face_elem,determineState());
+  const auto rho_fe = _rho(face_elem,determineState());
+  const auto sigma_fe = _sigma_nu(face_elem,determineState());
+  const auto mut_fn = _mu_t(face_neighbor,determineState());
+  const auto rho_fn = _rho(face_neighbor,determineState());
+  const auto sigma_fn = _sigma_nu(face_neighbor,determineState());
+ 
+ Moose::FV::interpolate(Moose::FV::InterpMethod::Average,
+		  	diffusion_face, mut_fe/rho_fe*sigma_fe, mut_fn/rho_fn*sigma_fn, *_face_info, true);
   
-  Moose::FV::interpolate(Moose::FV::InterpMethod::Average,
-		  	diffusion_face,
-		  	_mu_t(face_elem)/(_rho(face_elem)*_sigma_nu(face_elem)),
-		  	_mu_t(face_neighbor)/(_rho(face_neighbor)*_sigma_nu(face_neighbor)),
-		  	*_face_info,
-		  	true);
-  
+ //std::cout<<"cp2"<<std::endl;
   // Compute nu gradient dotted with the surface normal
-  auto dVardn = gradUDotNormal();
+  auto dVardn = gradUDotNormal(determineState());
 
+ //std::cout<<"cp3"<<std::endl;
   return -diffusion_face * dVardn;
 }
