@@ -14,26 +14,26 @@
 
 #pragma once
 
-#include "FVElementalKernel.h"
+//#include "FVElementalKernel.h"
+#include "AuxKernel.h"
 
 /**
  * Simple class to demonstrate off diagonal Jacobian contributions.
  */
-class INSFVSAViscositySourceSink : public FVElementalKernel
+//class INSFVSAViscositySourceSink : public FVElementalKernel
+class SADestruction : public AuxKernel
 {
 public:
   static InputParameters validParams();
 
-  INSFVSAViscositySourceSink(const InputParameters & parameters);
+  SADestruction(const InputParameters & parameters);
 
 protected:
-  ADReal computeQpResidual() override;
+  virtual Real computeValue();
 
 protected:
   virtual ADReal getSAStrainTensorNormDeformation();
-  virtual ADReal production();
   virtual ADReal destruction();
-  virtual ADReal gradSquareTerm();
 
   /// The dimension of the simulation
   const unsigned int _dim;
@@ -65,5 +65,7 @@ protected:
   const Moose::Functor<ADReal> & _C_w3;
   /// Cw2
   const Moose::Functor<ADReal> & _C_w2;
+  /// turbulent dynamic viscosity
+  const Moose::Functor<ADReal> & _nu;
 
 };
