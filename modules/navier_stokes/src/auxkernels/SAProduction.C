@@ -94,17 +94,12 @@ ADReal SAProduction::getSAStrainTensorNormDeformation()
 
   const auto & grad_u = _u_var->adGradSln(_current_elem, determineState(), true);
   ADReal symmetric_strain_tensor_norm = 0.;
-  //ADReal deformation = 2.0 * Utility::pow<2>(grad_u(0));
   ADReal vorticity = 0.;
-  //ADReal meanStrainRate = 0.;
   ADReal meanStrainRate = Utility::pow<2>(grad_u(0));
   if (_dim >= 2)
   {
     const auto & grad_v = _v_var->adGradSln(_current_elem, determineState(), true);
   
-    //deformation +=
-    //    2.0*Utility::pow<2>(grad_v(1)) + Utility::pow<2>(grad_v(0) + grad_u(1));
-    //meanStrainRate += 0.25 * Utility::pow<2>(grad_v(0) + grad_u(1));
     auto S12 = 0.5*(grad_u(1) + grad_v(0));
     auto S21 = S12;
     auto S22 = grad_v(1);
@@ -112,7 +107,6 @@ ADReal SAProduction::getSAStrainTensorNormDeformation()
     auto omega12 = 0.5*(grad_u(1) - grad_v(0));
     auto omega21 = -omega12;
     vorticity +=  (Utility::pow<2>(omega12)+ Utility::pow<2>(omega21) );
-    //vorticity += 0.25 * Utility::pow<2>(grad_v(0) - grad_u(1));
 
     if (_dim >= 3)
     {
@@ -132,10 +126,6 @@ ADReal SAProduction::getSAStrainTensorNormDeformation()
       
       vorticity +=  (Utility::pow<2>(omega13)+ Utility::pow<2>(omega31) );
       vorticity +=  (Utility::pow<2>(omega23)+ Utility::pow<2>(omega32) );
-      //deformation += 2.0 * Utility::pow<2>(grad_w(2)) +
-      //               Utility::pow<2>(grad_u(2) + grad_w(0)) +
-	//	     Utility::pow<2>(grad_v(2) + grad_w(1));
-      // TODO vorticity 3D
     }
   }
 
@@ -144,16 +134,17 @@ ADReal SAProduction::getSAStrainTensorNormDeformation()
 
   const auto kd_sq =std::pow( _kappa(makeElemArg(_current_elem),determineState())*_d(makeElemArg(_current_elem),determineState()), 2);
   const auto S_add = _nu(makeElemArg(_current_elem),determineState()) *fv2 / kd_sq;
+ 
+  // From ANSYS Fluent Theory Manual
+  ADReal S_tilda = sqrtVorticity + S_add;  
 
-  
-  //ADReal S_tilda = sqrtVorticity + S_add;
-  //ADReal S_tilda = sqrtVorticity + S_add + 2.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
+  /// Alternate formulation ANSYS Fluent Theory Manual
+  //ADReal S_tilda = sqrtVorticity + S_add + 2.0*std::min(0.,sqrtStrainRate-sqrtVorticity); 
   //ADReal S_tilda = sqrtVorticity + S_add + 1.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
-  ADReal S_tilda = sqrtVorticity + S_add;
+  
+  // Limiting S_tilda
   //S_tilda = (S_tilda < 0.3*sqrtVorticity) ? 0.3*sqrtVorticity : S_tilda; // Min Shat is 0.3 times vorticity
-  S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
-
-  //S_tilda = (S_tilda > 0.0) ? S_tilda : 0.0;
+  //S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
 
   
   return(S_tilda + 1e-6 ); 
@@ -185,28 +176,13 @@ SAProduction::computeValue()
 #ifdef MOOSE_GLOBAL_AD_INDEXING
 
   const auto S_tilda = getSAStrainTensorNormDeformation();
-  //const auto S_tilda = _C_b1(makeElemArg(_current_elem),determineState());
-  //std::cout<<"cp1"<<std::endl;
   ADReal prod = production();
-  //const auto prodHC = S_tilda *_C_b1(makeElemArg(_current_elem),determineState())*_nu(makeElemArg(_current_elem),determineState());
- // const auto prodHC = _C_b1(makeElemArg(_current_elem),determineState())*_nu(makeElemArg(_current_elem),determineState());
-  const auto prodHC = _nu(makeElemArg(_current_elem),determineState());
-  //auto prodHC = _C_b1(makeElemArg(_current_elem),determineState());
-  //auto prodHC = _nu(makeElemArg(_current_elem),determineState());
-  //prodHC *= _nu(makeElemArg(_current_elem),determineState());
-  //prodHC *= S_tilda;
-  //std::cout<<"cp2"<<std::endl;
   ADReal gst = gradSquareTerm();
-  //std::cout<<"cp4"<<std::endl;
 
   ADReal positiveTerms = prod + gst;
-  positiveTerms = positiveTerms > 0 ? positiveTerms : 0.0;
+  //positiveTerms = positiveTerms > 0 ? positiveTerms : 0.0;
 
-  //return 0;
   return raw_value(positiveTerms);
-  //return raw_value(S_tilda);
-  //return raw_value(prodHC);
-  //return raw_value(gst);
 
   #else
     return 0;

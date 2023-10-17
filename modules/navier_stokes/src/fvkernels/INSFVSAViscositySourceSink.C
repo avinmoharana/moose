@@ -91,17 +91,12 @@ ADReal INSFVSAViscositySourceSink::getSAStrainTensorNormDeformation()
 
   const auto & grad_u = _u_var->adGradSln(_current_elem, determineState(), true);
   ADReal symmetric_strain_tensor_norm = 0.;
-  //ADReal deformation = 2.0 * Utility::pow<2>(grad_u(0));
   ADReal vorticity = 0.;
-  //ADReal meanStrainRate = 0.;
   ADReal meanStrainRate = Utility::pow<2>(grad_u(0));
   if (_dim >= 2)
   {
     const auto & grad_v = _v_var->adGradSln(_current_elem, determineState(), true);
   
-    //deformation +=
-    //    2.0*Utility::pow<2>(grad_v(1)) + Utility::pow<2>(grad_v(0) + grad_u(1));
-    //meanStrainRate += 0.25 * Utility::pow<2>(grad_v(0) + grad_u(1));
     auto S12 = 0.5*(grad_u(1) + grad_v(0));
     auto S21 = S12;
     auto S22 = grad_v(1);
@@ -109,7 +104,6 @@ ADReal INSFVSAViscositySourceSink::getSAStrainTensorNormDeformation()
     auto omega12 = 0.5*(grad_u(1) - grad_v(0));
     auto omega21 = -omega12;
     vorticity +=  (Utility::pow<2>(omega12)+ Utility::pow<2>(omega21) );
-    //vorticity += 0.25 * Utility::pow<2>(grad_v(0) - grad_u(1));
 
     if (_dim >= 3)
     {
@@ -129,10 +123,6 @@ ADReal INSFVSAViscositySourceSink::getSAStrainTensorNormDeformation()
       
       vorticity +=  (Utility::pow<2>(omega13)+ Utility::pow<2>(omega31) );
       vorticity +=  (Utility::pow<2>(omega23)+ Utility::pow<2>(omega32) );
-      //deformation += 2.0 * Utility::pow<2>(grad_w(2)) +
-      //               Utility::pow<2>(grad_u(2) + grad_w(0)) +
-	//	     Utility::pow<2>(grad_v(2) + grad_w(1));
-      // TODO vorticity 3D
     }
   }
 
@@ -142,16 +132,17 @@ ADReal INSFVSAViscositySourceSink::getSAStrainTensorNormDeformation()
   const auto kd_sq =std::pow( _kappa(makeElemArg(_current_elem),determineState())*_d(makeElemArg(_current_elem),determineState()), 2);
   const auto S_add = _var(makeElemArg(_current_elem),determineState()) *fv2 / kd_sq;
 
-  //ADReal S_tilda = sqrtVorticity + S_add + 2.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
-  //ADReal S_tilda = sqrtVorticity + S_add + 1.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
+  // From ANSYS Fluent Theory Manual
   ADReal S_tilda = sqrtVorticity + S_add;
 
-  S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
+  // Alternate formulation ANSYS Fluent Theory Manual
+  //ADReal S_tilda = sqrtVorticity + S_add + 2.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
+  //ADReal S_tilda = sqrtVorticity + S_add + 1.0*std::min(0.,sqrtStrainRate-sqrtVorticity);
+
+  // Limiting S_tilda
+  //S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
   //S_tilda = (S_tilda < 0.3*sqrtVorticity) ? 0.3*sqrtVorticity : S_tilda; // Min Shat is 0.3 times vorticity
 
-  //S_tilda = (S_tilda > 0.0) ? S_tilda : 0.0;
-
-  
   return(S_tilda+1e-6); 
 }
 
@@ -175,16 +166,11 @@ ADReal INSFVSAViscositySourceSink::destruction()
   ADReal r =  _var(makeElemArg(_current_elem),determineState()) / S_tilda / kd_sq;
   //r = (r > 0.0) ? r : 1e-3;
   //r = (r < 10.0) ? r : 10.0;  // limiting r to 10, literature reports r < 1
-  //std::cout<<"cp1"<<std::endl;
   const auto g = r + _C_w2(makeElemArg(_current_elem),determineState()) * (std::pow(r,6) - r);
-  //std::cout<<"cp1"<<std::endl;
   const auto cw3_6 = std::pow(_C_w3(makeElemArg(_current_elem),determineState()),6);
-  //std::cout<<"cp1"<<std::endl;
   const auto fw = g * std::pow( ( 1.0 + cw3_6) / (std::pow(g,6)+cw3_6),1.0/6.0);
-  //std::cout<<"cp1"<<std::endl;
   const auto Cw1 = _C_b1(makeElemArg(_current_elem),determineState()) / std::pow(_kappa(makeElemArg(_current_elem),determineState()),2)
              + ( 1.0 + _C_b2(makeElemArg(_current_elem),determineState()) ) / _sigma_nu(makeElemArg(_current_elem),determineState());
-  //std::cout<<"cp1"<<std::endl;
   const auto nubar_by_d_sq =std::pow( _var(makeElemArg(_current_elem),determineState())/_d(makeElemArg(_current_elem),determineState()),2);
 
   ADReal destruct = Cw1 * fw *nubar_by_d_sq + protection_nu_bar;
@@ -209,48 +195,19 @@ INSFVSAViscositySourceSink::computeQpResidual()
 
   ADReal residual = 0.0;
 
-  //std::cout<<"cp1"<<std::endl;
   ADReal prod = production();
-  //std::cout<<"cp2"<<std::endl;
   ADReal destruct = destruction();
-  //std::cout<<"cp3"<<std::endl;
   ADReal gst = gradSquareTerm();
-  //std::cout<<"cp4"<<std::endl;
 
   ADReal positiveTerms = prod + gst;
   positiveTerms = positiveTerms > 0 ? positiveTerms : 0.0;
   destruct = destruct > 0 ? destruct : 0.0;
-/*
-  Real n = 100.0; // used to limit the source term
-
-  bool check1 = std::fabs(destruct)/std::fabs(positiveTerms) > n;
-  bool check2 = std::fabs(positiveTerms)/std::fabs(destruct) > n;
-
-  if (check1 && !check2) {
-
-    destruct = n*positiveTerms;
-    //std::cout<<"cp1"<<std::endl;
-    }
-  if (!check1 && check2) {
-	  positiveTerms = n*destruct;
-    //std::cout<<"cp2"<<std::endl;
-    }
-
-  //positiveTerms = (positiveTerms/destruct < n) ? positiveTerms : n*destruct;
-  //positiveTerms = (destruct/positiveTerms < n) ? destruct : n*positiveTerms;
-*/
-    residual += positiveTerms - destruct;
-  //residual += 2.0*positiveTerms - destruct;
-
-  //residual = (residual < 100) ? residual : 100;
-  //residual = (residual > 0.01) ? residual : 0.01;
   
+  residual += positiveTerms - destruct;
+
   ADReal one = 1.0;
-  //return raw_value(prod)*one;
-  //return raw_value(destruct)*one;
-  //return prod;
+  
   return residual;
-  //return 0.;
 
   #else
     return 0;
