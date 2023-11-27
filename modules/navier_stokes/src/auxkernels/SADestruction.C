@@ -144,7 +144,7 @@ ADReal SADestruction::getSAStrainTensorNormDeformation()
   
   // Limiting S_tilda
   //S_tilda = (S_tilda < 0.3*sqrtVorticity) ? 0.3*sqrtVorticity : S_tilda; // Min Shat is 0.3 times vorticity
-  //S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
+  S_tilda = (S_tilda < 0.3*sqrtStrainRate) ? 0.3*sqrtStrainRate : S_tilda; // Min Shat is 0.3 times vorticity
 
   return(S_tilda+1e-6);
 }
@@ -153,13 +153,14 @@ ADReal SADestruction::destruction()
 {
   constexpr Real protection_nu_bar = 0.;
 
-  const auto S_tilda = getSAStrainTensorNormDeformation();
+  auto S_tilda = getSAStrainTensorNormDeformation();
+  S_tilda = ( S_tilda < 1e-6) ? 1e-6 : S_tilda; 
   
   const auto kd_sq =std::pow( _kappa(makeElemArg(_current_elem),determineState())*_d(makeElemArg(_current_elem),determineState()), 2);
   
   ADReal r =  _nu(makeElemArg(_current_elem),determineState()) / S_tilda / kd_sq;
   //r = (r > 0.0) ? r : 1e-3;
-  //r = (r < 10.0) ? r : 10.0;  // limiting r to 10, literature reports r < 1
+  r = (r < 10.0) ? r : 10.0;  // limiting r to 10, literature reports r < 1
   const auto g = r + _C_w2(makeElemArg(_current_elem),determineState()) * (std::pow(r,6) - r);
   const auto cw3_6 = std::pow(_C_w3(makeElemArg(_current_elem),determineState()),6);
   const auto fw = g * std::pow( ( 1.0 + cw3_6) / (std::pow(g,6)+cw3_6),1.0/6.0);
@@ -179,7 +180,7 @@ SADestruction::computeValue()
 
   ADReal destruct = destruction();
 
-  destruct = destruct > 0 ? destruct : 0.0;
+  //destruct = destruct > 0 ? destruct : 0.0;
 
   return raw_value(destruct);
 
