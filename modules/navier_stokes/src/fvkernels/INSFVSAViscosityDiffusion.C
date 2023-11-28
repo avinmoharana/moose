@@ -34,11 +34,13 @@ INSFVSAViscosityDiffusion::INSFVSAViscosityDiffusion(const InputParameters & par
     _rho(getFunctor<ADReal>("rho")),
     _sigma_nu(getFunctor<ADReal>("sigma_nu"))
 {
+/*
 #ifndef MOOSE_GLOBAL_AD_INDEXING
   mooseError("INSFV is not supported by local AD indexing. In order to use INSFV, please run "
              "the configure script in the root MOOSE directory with the configure option "
              "'--with-ad-indexing-type=global'");
 #endif
+*/
   if (!dynamic_cast<INSFVEnergyVariable *>(&_var))
     mooseError("INSFVSAViscosityDiffusion may only be used with a fluid temperature variable, "
                "of variable type INSFVEnergyVariable.");

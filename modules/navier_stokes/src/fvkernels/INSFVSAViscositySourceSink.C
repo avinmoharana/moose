@@ -59,12 +59,13 @@ INSFVSAViscositySourceSink::INSFVSAViscositySourceSink(const InputParameters & p
     _C_w3(getFunctor<ADReal>("Cw3")),
     _C_w2(getFunctor<ADReal>("Cw2"))
 {
-#ifndef MOOSE_GLOBAL_AD_INDEXING
-  mooseError("INSFV is not supported by local AD indexing. In order to use INSFV, please run the "
-             "configure script in the root MOOSE directory with the configure option "
+/*
+//#ifndef MOOSE_GLOBAL_AD_INDEXING
+//  mooseError("INSFV is not supported by local AD indexing. In order to use INSFV, please run the "
+//  "configure script in the root MOOSE directory with the configure option "
              "'--with-ad-indexing-type=global'");
 #endif
-
+*/
   if (!_u_var)
     paramError("u", "the u velocity must be an INSFVVelocityVariable.");
 
